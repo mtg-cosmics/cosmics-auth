@@ -23,16 +23,20 @@ def create_auth_router(
     router = APIRouter()
 
     @router.get("/login")
-    async def login(request: Request, next: str | None = None):
+    async def login(request: Request, next: str | None = None, redirect_uri: str | None = None):
         if next is not None and next not in settings.allowed_redirects:
             raise HTTPException(status_code=400, detail="Invalid redirect")
+        if redirect_uri is not None and redirect_uri not in settings.allowed_redirects:
+            raise HTTPException(status_code=400, detail="Invalid redirect_uri")
+        effective_redirect_uri = redirect_uri or settings.redirect_uri
         state = secrets.token_urlsafe(16)
         request.session["oauth_state"] = state
         request.session["next"] = next or post_login_redirect
+        request.session["redirect_uri"] = effective_redirect_uri
         params = {
             "response_type": "code",
             "client_id": settings.client_id,
-            "redirect_uri": settings.redirect_uri,
+            "redirect_uri": effective_redirect_uri,
             "scope": "openid email profile",
             "state": state,
         }
@@ -44,13 +48,15 @@ def create_auth_router(
         if state != request.session.get("oauth_state"):
             raise HTTPException(status_code=400, detail="Invalid state")
 
+        effective_redirect_uri = request.session.pop("redirect_uri", settings.redirect_uri)
+
         async with httpx.AsyncClient() as client:
             token_resp = await client.post(
                 settings.token_url,
                 data={
                     "grant_type": "authorization_code",
                     "code": code,
-                    "redirect_uri": settings.redirect_uri,
+                    "redirect_uri": effective_redirect_uri,
                     "client_id": settings.client_id,
                     "client_secret": settings.client_secret,
                 },
