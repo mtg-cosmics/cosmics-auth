@@ -24,9 +24,9 @@ def create_auth_router(
 
     @router.get("/login")
     async def login(request: Request, next: str | None = None, redirect_uri: str | None = None):
-        if next is not None and next not in settings.allowed_redirects:
+        if next is not None and not settings.is_allowed_redirect(next):
             raise HTTPException(status_code=400, detail="Invalid redirect")
-        if redirect_uri is not None and redirect_uri not in settings.allowed_redirects:
+        if redirect_uri is not None and not settings.is_allowed_redirect(redirect_uri):
             raise HTTPException(status_code=400, detail="Invalid redirect_uri")
         effective_redirect_uri = redirect_uri or settings.redirect_uri
         state = secrets.token_urlsafe(16)
