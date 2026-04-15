@@ -6,6 +6,7 @@ class AuthSettings(BaseSettings):
     client_id: str
     client_secret: str
     redirect_uri: str  # e.g. https://myapp.cosmics.me/auth/callback
+    allowed_redirects: set[str] = set()  # e.g. AUTH_ALLOWED_REDIRECTS=https://myapp.cosmics.me,http://localhost:5173
 
     # Derived — override only if your Authentik slug differs
     @property

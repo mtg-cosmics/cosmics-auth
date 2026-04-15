@@ -23,9 +23,12 @@ def create_auth_router(
     router = APIRouter()
 
     @router.get("/login")
-    async def login(request: Request):
+    async def login(request: Request, next: str | None = None):
+        if next is not None and next not in settings.allowed_redirects:
+            raise HTTPException(status_code=400, detail="Invalid redirect")
         state = secrets.token_urlsafe(16)
         request.session["oauth_state"] = state
+        request.session["next"] = next or post_login_redirect
         params = {
             "response_type": "code",
             "client_id": settings.client_id,
@@ -68,7 +71,8 @@ def create_auth_router(
         if on_login:
             on_login(user, request)
 
-        return RedirectResponse(post_login_redirect)
+        redirect_to = request.session.pop("next", post_login_redirect)
+        return RedirectResponse(redirect_to)
 
     @router.get("/logout")
     async def logout(request: Request):
