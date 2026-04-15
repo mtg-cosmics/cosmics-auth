@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -7,6 +8,13 @@ class AuthSettings(BaseSettings):
     client_secret: str
     redirect_uri: str  # e.g. https://myapp.cosmics.me/auth/callback
     allowed_redirects: set[str] = set()  # e.g. AUTH_ALLOWED_REDIRECTS=https://myapp.cosmics.me,http://localhost:5173
+
+    @field_validator("allowed_redirects", mode="before")
+    @classmethod
+    def parse_allowed_redirects(cls, v: object) -> set[str]:
+        if isinstance(v, str):
+            return {u.strip() for u in v.split(",") if u.strip()}
+        return set(v) if v else set()
 
     # Derived — override only if your Authentik slug differs
     @property
